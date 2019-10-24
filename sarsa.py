@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from windy_gridworld import WindyGridworld
 from collections import defaultdict
+import pickle
 
 ACT_TO_IND = {(1,0):0, (-1,0):1, (0,1):2, (0,-1):3}
 IND_TO_ACT = {0:(1,0), 1:(-1,0), 2:(0,1), 3:(0,-1)}
@@ -32,7 +33,7 @@ def sarsa(env, policy, epsilon=0.1, alpha=0.5, gamma=1, iterations=1000):
         game_over = False
         while not game_over:
             next_state, reward, game_over, info = env.step(action)
-            next_action = policy(epsilon, env.get_actions(next_state), get_q_state(Q, state, env))
+            next_action = policy(epsilon, env.get_actions(next_state), get_q_state(Q, next_state, env))
 
             Q[state, ACT_TO_IND[action]] += alpha*(reward + gamma*Q_reader(next_state, next_action) - Q_reader(state, action))
 
@@ -57,14 +58,6 @@ def behavior_policy(epsilon, actions, q_state_values):
 
     return IND_TO_ACT[action_id]
 
-def get_policy(Q, shape):
-    greedy_actions = np.zeros(shape)
-
-    for (y,x), a in Q.keys():
-        if greedy_actions[y,x] == 0 or greedy_actions[y,x] < Q[(y,x), a] and not Q[(y,x), a] == 0:
-            greedy_actions[y,x] = a
-    
-    return greedy_actions
 
 def draw_Q(Q, shape):
 
@@ -88,56 +81,99 @@ def draw_Q(Q, shape):
     cbar.ax.tick_params(labelsize=20)
     cbar.ax.set_ylabel('Value', rotation=-90, va='bottom', fontsize=20)
 
-    plt.show()
+    return best_q_values
     
 
-# TODO: Verify this and plot policy
-def play(env, policy):
+def play_no_explore(env, policy, Q):
     history = []
 
     state = env.reset()
-    game_over = False
+    action = policy(0, env.get_actions(state), get_q_state(Q, state, env))
 
+    game_over = False
     while not game_over:
         history.append(state)
-        action = policy[state[0], state[1]]
-        next_state, reward, game_over, info = env.step(action)
-        state = next_state
+
+        next_state, _, game_over, _ = env.step(action)
+        next_action = policy(0, env.get_actions(next_state), get_q_state(Q, next_state, env))
+
+        state = next_state; action = next_action
 
     return history
 
-def animate_Q(env, Q):
-    # TODO
 
-    grid = np.zeros(env.state_space)
-
-    fig = plt.figure()
-    fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
-    ax = fig.add_subplot(111, aspect='equal', autoscale_on=False, xlim=(-1, 11), ylim=(-1, 8))
-
-    ax.imshow(grid) # testing
+def plot_history(env, h):
     
-    agent = ax.plot([],[], bo=3, ms=6)
+    t0 = h[0]
+    x = t0[0]
+    y = t0[0]
+    xs = []; ys = []; us = []; vs = []
+    for t in range(len(h)-1): # Do not consider terminal state
+        x = h[t][0]
+        y = h[t][1]
+        
+        u = h[t+1][0] - x
+        v = h[t+1][1] - y
 
-    def init():
-        env.reset()
-        agent.set_data([],[])
-        return agent
-    
-    def animate(i):
-        #action = greedy_action(state) # TODO
-        action = None
-        state = env.step(action)
+        xs.append(x)
+        ys.append(y)
+        us.append(u)
+        vs.append(v)
 
-        agent.set_data(state[0], state[1])
+    fig = plt.figure(figsize=(20,15))
+    plt.imshow(np.zeros(env.state_space))
+    plt.quiver(xs, ys, us, vs)
 
-        return agent
-
-    anim = FuncAnimation(fig, animate, init_func=init, frames=200, interval=20, blit=True)
-    plt.show()
+    #plt.show()
 
 if __name__ == "__main__":
     env = WindyGridworld()
-    Q = sarsa(env, behavior_policy, iterations=10)
+
+    if True: # Save time but using pre-trained Q values
+        Q = sarsa(env, behavior_policy, iterations=10000)
+
+        with open('Q.p', 'wb') as f:
+            pickle.dump(Q, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+    with open('Q.p', 'rb') as f:
+        Q = pickle.load(f)
 
     draw_Q(Q, env.state_space)
+
+    history = play_no_explore(env, behavior_policy, Q)
+    # TODO
+    #plot_history(env, history)
+
+    plt.show()
+    
+
+
+# def animate_Q(env, Q):
+#     # TODO
+
+#     grid = np.zeros(env.state_space)
+
+#     fig = plt.figure()
+#     fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
+#     ax = fig.add_subplot(111, aspect='equal', autoscale_on=False, xlim=(-1, 11), ylim=(-1, 8))
+
+#     ax.imshow(grid) # testing
+    
+#     agent = ax.plot([],[], bo=3, ms=6)
+
+#     def init():
+#         env.reset()
+#         agent.set_data([],[])
+#         return agent
+    
+#     def animate(i):
+#         #action = greedy_action(state) # TODO
+#         action = None
+#         state = env.step(action)
+
+#         agent.set_data(state[0], state[1])
+
+#         return agent
+
+#     anim = FuncAnimation(fig, animate, init_func=init, frames=200, interval=20, blit=True)
+#     plt.show()
