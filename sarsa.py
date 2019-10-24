@@ -92,7 +92,7 @@ def play_no_explore(env, policy, Q):
 
     game_over = False
     while not game_over:
-        history.append(state)
+        history.append((state, action))
 
         next_state, _, game_over, _ = env.step(action)
         next_action = policy(0, env.get_actions(next_state), get_q_state(Q, next_state, env))
@@ -102,34 +102,34 @@ def play_no_explore(env, policy, Q):
     return history
 
 
+#TODO Make plot nice
 def plot_history(env, h):
     
-    t0 = h[0]
-    x = t0[0]
-    y = t0[0]
     xs = []; ys = []; us = []; vs = []
-    for t in range(len(h)-1): # Do not consider terminal state
-        x = h[t][0]
-        y = h[t][1]
+    for t in range(1,len(h)-1):
+        state = h[t][0]
+        next_state = h[t+1][0]
         
-        u = h[t+1][0] - x
-        v = h[t+1][1] - y
+        x = state[1]
+        y = state[0]
+        u = next_state[1] - state[1]
+        v = -(next_state[0] - state[0])
 
         xs.append(x)
         ys.append(y)
         us.append(u)
         vs.append(v)
 
+
     fig = plt.figure(figsize=(20,15))
     plt.imshow(np.zeros(env.state_space))
     plt.quiver(xs, ys, us, vs)
 
-    #plt.show()
 
 if __name__ == "__main__":
     env = WindyGridworld()
 
-    if True: # Save time but using pre-trained Q values
+    if False: # Save time but using pre-trained Q values
         Q = sarsa(env, behavior_policy, iterations=10000)
 
         with open('Q.p', 'wb') as f:
@@ -141,39 +141,7 @@ if __name__ == "__main__":
     draw_Q(Q, env.state_space)
 
     history = play_no_explore(env, behavior_policy, Q)
-    # TODO
-    #plot_history(env, history)
+    plot_history(env, history)
 
     plt.show()
     
-
-
-# def animate_Q(env, Q):
-#     # TODO
-
-#     grid = np.zeros(env.state_space)
-
-#     fig = plt.figure()
-#     fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
-#     ax = fig.add_subplot(111, aspect='equal', autoscale_on=False, xlim=(-1, 11), ylim=(-1, 8))
-
-#     ax.imshow(grid) # testing
-    
-#     agent = ax.plot([],[], bo=3, ms=6)
-
-#     def init():
-#         env.reset()
-#         agent.set_data([],[])
-#         return agent
-    
-#     def animate(i):
-#         #action = greedy_action(state) # TODO
-#         action = None
-#         state = env.step(action)
-
-#         agent.set_data(state[0], state[1])
-
-#         return agent
-
-#     anim = FuncAnimation(fig, animate, init_func=init, frames=200, interval=20, blit=True)
-#     plt.show()
