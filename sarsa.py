@@ -4,6 +4,8 @@ from matplotlib.animation import FuncAnimation
 from windy_gridworld import WindyGridworld
 from collections import defaultdict
 import pickle
+import matplotlib.ticker as ticker
+
 
 ACT_TO_IND = {(1,0):0, (-1,0):1, (0,1):2, (0,-1):3}
 IND_TO_ACT = {0:(1,0), 1:(-1,0), 2:(0,1), 3:(0,-1)}
@@ -21,11 +23,11 @@ def sarsa(env, policy, epsilon=0.1, alpha=0.5, gamma=1, iterations=1000):
     Q = defaultdict(float)
     Q_reader = create_q_reader(Q)
     no_steps = 0
+    history = []
 
     for episode in range(iterations):
         if episode % 10 == 0:
             print("Playing episode {} out of {}. Average number of steps: {}.".format(episode, iterations, no_steps/10))
-            no_steps = 0
 
         state = env.reset()
         action = policy(epsilon, env.get_actions(state), get_q_state(Q, state, env))
@@ -39,8 +41,10 @@ def sarsa(env, policy, epsilon=0.1, alpha=0.5, gamma=1, iterations=1000):
 
             state = next_state; action = next_action
             no_steps += 1
+        
+        history.append((no_steps, episode))
             
-    return Q
+    return Q, np.array(history)
 
 
 def behavior_policy(epsilon, actions, q_state_values):
@@ -89,22 +93,22 @@ def play_no_explore(env, policy, Q):
 
     state = env.reset()
     action = policy(0, env.get_actions(state), get_q_state(Q, state, env))
+    history.append((state, action))
 
     game_over = False
     while not game_over:
-        history.append((state, action))
-
         next_state, _, game_over, _ = env.step(action)
         next_action = policy(0, env.get_actions(next_state), get_q_state(Q, next_state, env))
-
+    
         state = next_state; action = next_action
+        history.append((state, action))
 
     return history
 
 
-#TODO Make plot nice
 def plot_history(env, h):
-    
+
+    grid = np.ones(env.state_space)*255
     xs = []; ys = []; us = []; vs = []
     for t in range(1,len(h)-1):
         state = h[t][0]
@@ -120,17 +124,42 @@ def plot_history(env, h):
         us.append(u)
         vs.append(v)
 
+        grid[y,x] = 200
 
-    fig = plt.figure(figsize=(20,15))
-    plt.imshow(np.zeros(env.state_space))
+
+    fig, ax = plt.subplots(1, figsize=(20,15))
+    plt.imshow(grid, cmap='gray', vmin=0, vmax=255)
+
+    ax.grid(linestyle='-', linewidth=1)
+
+    ax.set_xticks(np.arange(-.5, 10, 1))
+    ax.set_yticks(np.arange(-.5, 10, 1))
+    ax.set_xticklabels([])
+    ax.set_yticklabels([])
+    ax.set_xlabel('Wind (number of steps pushed North)', fontsize=30)
+
+    ax.text(env.initial_state[1], env.initial_state[0], 'Start', ha="center", va="center", fontsize=30)
+    ax.text(env.terminate_state[1], env.terminate_state[0], 'End', ha="center", va="center", fontsize=30)
+
+    ax.xaxis.set_major_formatter(ticker.NullFormatter())
+    ax.xaxis.set_minor_locator(ticker.FixedLocator(np.arange(0, 10, 1)))
+    ax.xaxis.set_minor_formatter(ticker.FixedFormatter(np.abs(env.north_wind)))
+    ax.tick_params(which='minor', labelsize=20)
+
+    plt.arrow(5.5, 6, 0, -4, width=2, head_width=5, head_length=2, alpha=0.4)
     plt.quiver(xs, ys, us, vs)
 
+    plt.title('Policy', fontsize=35)
+
+# TODO
+def plot_train_history(h):
+    pass
 
 if __name__ == "__main__":
     env = WindyGridworld()
 
     if False: # Save time but using pre-trained Q values
-        Q = sarsa(env, behavior_policy, iterations=10000)
+        Q, train_history = sarsa(env, behavior_policy, iterations=10000)
 
         with open('Q.p', 'wb') as f:
             pickle.dump(Q, f, protocol=pickle.HIGHEST_PROTOCOL)
@@ -140,8 +169,9 @@ if __name__ == "__main__":
 
     draw_Q(Q, env.state_space)
 
-    history = play_no_explore(env, behavior_policy, Q)
-    plot_history(env, history)
+    play_history = play_no_explore(env, behavior_policy, Q)
+    plot_history(env, play_history)
+    plot_train_history(train_history)
 
     plt.show()
     
