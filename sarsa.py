@@ -151,15 +151,28 @@ def plot_history(env, h):
 
     plt.title('Policy', fontsize=35)
 
-# TODO
+
 def plot_train_history(h):
-    pass
+
+    data = [x for (x,y) in h]
+
+    fig, ax = plt.subplots(1, figsize=(20,15))
+    ax.set_xlabel('Timesteps', fontsize=30)
+    ax.set_ylabel('Episodes', fontsize=30)
+    ax.tick_params(labelsize=25)
+    plt.title('Training Progress', fontsize=35)
+
+    plt.plot(data, np.arange(len(data)))
+    
+
+    
 
 if __name__ == "__main__":
     env = WindyGridworld()
+    train_history = []
 
     if False: # Save time but using pre-trained Q values
-        Q, train_history = sarsa(env, behavior_policy, iterations=10000)
+        Q, train_history = sarsa(env, behavior_policy, iterations=200)
 
         with open('Q.p', 'wb') as f:
             pickle.dump(Q, f, protocol=pickle.HIGHEST_PROTOCOL)
