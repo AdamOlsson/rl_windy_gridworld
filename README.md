@@ -4,4 +4,5 @@ Part 5 of my Reinforcement Learning (RL) series. During this series, I dwell int
 
 The litterature follow throughout this series is Reinforcement Learning "An Introduction" by Ricard S. Button and Andrew G. Barto. ISBN: 9780262039246
 
-## TODO
+## Temporal Difference
+In this part I dive into Temporal Difference methods. More specifically, I implement the On-Policy Temporal Difference Control method Sarsa. I do this in a windy gridworld setting where the only difference to a regular gridworld setting is that in some columns there is a northbound wind pushing the agent. Temporal Difference methods estimates the state-action function during the episode, compared to previous algorithms which has to wait until an episode in complete to estimate the state-action function. This is advantageous compared to Dynamic Programing methods because there is no need for a complete model of the environment. Compared to Monte Carlo methods, Temporal Difference methods can be applied in online applications because it learns in an timestep by timestep fashion where Monte Carlo methods learns after the episode has finished. This is a critical consideration in tasks that have long episodes or not episodes at all. 
